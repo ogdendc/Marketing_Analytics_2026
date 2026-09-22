@@ -19,10 +19,13 @@
 -- ============================================================================
 
 -- Firm data: one row per household
+-- Note: schemaHints pins value_tier to STRING — without it, CSV type-inference reads
+-- the tier codes "T1".."T5" as TIME-of-day values (e.g. T1 -> 01:00:00).
 CREATE OR REPLACE TABLE your_catalog.your_schema.households AS
 SELECT * FROM read_files(
   '/Volumes/your_catalog/your_schema/files/households.csv',
-  format => 'csv', header => true, schemaEvolutionMode => 'none');
+  format => 'csv', header => true, schemaEvolutionMode => 'none',
+  schemaHints => 'value_tier STRING');
 
 -- External upload: campaign dimension (one row per campaign)
 CREATE OR REPLACE TABLE your_catalog.your_schema.campaigns AS
