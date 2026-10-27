@@ -17,6 +17,7 @@ You'll learn to:
 | Path | What it is |
 |---|---|
 | `data/` | Dashboard-ready CSVs to upload (see below) |
+| [`00_create_tables_from_csv.sql`](00_create_tables_from_csv.sql) | One SQL file that creates all five tables from the CSVs in a volume (the scripted alternative to uploading) |
 | [`genie_code_prompts.md`](genie_code_prompts.md) | Copy-paste Genie Code prompts for every module, with "you should see" checks and "your turn" challenges |
 | [`prompt_anatomy.md`](prompt_anatomy.md) | One-pager: how to write prompts that work first time |
 | `vega-lite/` | Tested Vega-Lite specs (bullet, funnel, waterfall, dumbbell, cross-filter) with dataset SQL |
@@ -60,6 +61,10 @@ that wasn't contacted). The gap between them is the **lift** the campaign caused
 **New → Add or upload data → Create or modify a table.** Drop in each CSV (one table per file),
 pick your catalog and schema, keep the suggested table names, and click **Create table**.
 Do `campaign_results_detail.csv` first, since every module uses it.
+
+**Or, scripted:** upload the five CSVs to a Unity Catalog volume folder, open
+[`00_create_tables_from_csv.sql`](00_create_tables_from_csv.sql) in the SQL editor, find-and-replace
+`your_catalog.your_schema` and the volume path, and click **Run all**.
 
 ✅ Check: `SELECT COUNT(*) FROM campaign_results_detail` returns **4,381**.
 
