@@ -1,0 +1,66 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "width": "container",
+  "height": "container",
+  "config": {
+    "autosize": { "type": "fit", "contains": "padding" },
+    "view": { "stroke": null }
+  },
+  "data": { "name": "databricks_query" },
+  "transform": [
+    { "fold": ["delivered", "opened", "clicked", "responded", "converted"], "as": ["stage", "count"] },
+    { "filter": "datum.count != null" },
+    { "calculate": "-datum.count / 2", "as": "bar_left" },
+    { "calculate": "datum.count / 2", "as": "bar_right" }
+  ],
+  "facet": {
+    "row": {
+      "field": "campaign_name",
+      "type": "nominal",
+      "title": null,
+      "header": { "labelOrient": "top", "labelAnchor": "start", "labelFontWeight": "bold", "labelAlign": "left" }
+    }
+  },
+  "spec": {
+    "height": { "step": 26 },
+    "encoding": {
+      "y": {
+        "field": "stage",
+        "type": "ordinal",
+        "title": null,
+        "sort": ["delivered", "opened", "clicked", "responded", "converted"]
+      },
+      "x": {
+        "field": "bar_left",
+        "type": "quantitative",
+        "axis": null,
+        "title": null
+      },
+      "x2": { "field": "bar_right" },
+      "color": {
+        "field": "stage",
+        "type": "nominal",
+        "legend": null,
+        "scale": {
+          "domain": ["delivered", "opened", "clicked", "responded", "converted"],
+          "range": ["#1F3A5F", "#24507A", "#2D6A96", "#3C84B0", "#D7263D"]
+        }
+      },
+      "tooltip": [
+        { "field": "campaign_name", "type": "nominal", "title": "Campaign" },
+        { "field": "stage", "type": "nominal", "title": "Stage" },
+        { "field": "count", "type": "quantitative", "title": "Target households", "format": "," }
+      ]
+    },
+    "layer": [
+      { "mark": { "type": "bar" } },
+      {
+        "mark": { "type": "text", "color": "#FFFFFF", "fontWeight": "bold" },
+        "encoding": {
+          "x": { "datum": 0 },
+          "text": { "field": "count", "type": "quantitative", "format": "," }
+        }
+      }
+    ]
+  }
+}

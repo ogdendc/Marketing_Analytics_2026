@@ -1,0 +1,8 @@
+campaign_id,campaign_name,channel,segment,target_contacts,target_conversions,target_cvr,holdout_contacts,holdout_cvr,lift,incremental_conversions,avg_conversion_value,incremental_value,cost,roi
+CMP_001,Spring Retirement Readiness,Email,Affluent,458,26,0.0568,76,0.0263,0.0305,14.0,6504.23,90716.95,229.0,395.14
+CMP_001,Spring Retirement Readiness,Email,Mass Affluent,752,47,0.0625,123,0.0163,0.0462,35.0,1855.94,64535.39,376.0,170.64
+CMP_002,Annual Wealth Review Invitation,Direct Mail,Affluent,527,29,0.055,103,0.0097,0.0453,24.0,6632.24,158400.97,2371.5,65.79
+CMP_002,Annual Wealth Review Invitation,Direct Mail,High Net Worth,165,22,0.1333,29,0.0,0.1333,22.0,22832.45,502313.83,742.5,675.52
+CMP_002,Annual Wealth Review Invitation,Direct Mail,Ultra HNW,26,5,0.1923,2,0.0,0.1923,5.0,114244.07,571220.37,117.0,4881.23
+CMP_003,Rollover Retargeting,Digital,Mass Affluent,911,26,0.0285,170,0.0294,-9.0E-4,-1.0,2001.63,-1589.53,1093.2,-2.45
+CMP_003,Rollover Retargeting,Digital,Mass Market,886,12,0.0135,153,0.0131,5.0E-4,0.0,503.1,210.45,1063.2,-0.8

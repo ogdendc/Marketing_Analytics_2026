@@ -126,7 +126,13 @@ code/    00_load_from_files.sql → 04_analysis.sql              (SQL-first path
          generate_campaign_files.py                            (how the data was made)
 docs/    genie_space_setup.md, dashboard_with_genie_code.md, lakeflow_designer_recipe.md,
          data_dictionary.md
+dashboards-deep-dive/   hands-on AI/BI dashboards follow-up session (see its README)
 ```
+
+## Follow-up session: AI/BI Dashboards Deep Dive
+A 90-minute hands-on session on building dashboards with Genie Code: one-prompt dashboards,
+metric modeling, interactivity, Vega-Lite custom visualizations, Tableau migration and
+publishing. Everything is in [`dashboards-deep-dive/`](dashboards-deep-dive/README.md).
 
 ## Resources
 - Databricks documentation, Databricks Academy, and the in-product **Assistant / Genie Code**.

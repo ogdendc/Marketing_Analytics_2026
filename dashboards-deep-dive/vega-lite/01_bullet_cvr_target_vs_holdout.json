@@ -1,0 +1,50 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "width": "container",
+  "height": "container",
+  "config": {
+    "autosize": { "type": "fit", "contains": "padding" },
+    "view": { "stroke": null }
+  },
+  "data": { "name": "databricks_query" },
+  "encoding": {
+    "y": {
+      "field": "campaign_name",
+      "type": "nominal",
+      "title": null,
+      "sort": { "field": "target_cvr", "order": "descending" }
+    },
+    "x": {
+      "field": "target_cvr",
+      "type": "quantitative",
+      "title": "Conversion rate (converted / households)",
+      "axis": { "format": ".1%" },
+      "scale": { "domainMin": 0 }
+    }
+  },
+  "layer": [
+    {
+      "mark": { "type": "bar", "color": "#1F3A5F", "size": 18 },
+      "encoding": {
+        "tooltip": [
+          { "field": "campaign_name", "type": "nominal", "title": "Campaign" },
+          { "field": "target_cvr", "type": "quantitative", "title": "Target CVR", "format": ".2%" },
+          { "field": "holdout_cvr", "type": "quantitative", "title": "Holdout CVR (reference)", "format": ".2%" }
+        ]
+      }
+    },
+    {
+      "mark": { "type": "tick", "color": "#D7263D", "thickness": 3, "size": 28 },
+      "encoding": {
+        "x": { "field": "holdout_cvr", "type": "quantitative" }
+      }
+    },
+    {
+      "mark": { "type": "text", "align": "left", "dx": 6, "color": "#1F3A5F" },
+      "encoding": {
+        "x": { "field": "target_cvr", "type": "quantitative" },
+        "text": { "field": "target_cvr", "type": "quantitative", "format": ".1%" }
+      }
+    }
+  ]
+}

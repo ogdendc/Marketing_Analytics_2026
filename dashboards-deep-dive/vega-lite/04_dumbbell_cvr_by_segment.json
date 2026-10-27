@@ -1,0 +1,72 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "width": "container",
+  "height": "container",
+  "config": {
+    "autosize": { "type": "fit", "contains": "padding" },
+    "view": { "stroke": null }
+  },
+  "data": { "name": "databricks_query" },
+  "transform": [
+    { "calculate": "datum.lift > 0 ? 'Positive lift' : 'No or negative lift'", "as": "lift_direction" }
+  ],
+  "encoding": {
+    "y": {
+      "field": "segment",
+      "type": "nominal",
+      "title": null,
+      "sort": { "field": "lift", "order": "descending" }
+    }
+  },
+  "layer": [
+    {
+      "mark": { "type": "rule", "strokeWidth": 3 },
+      "encoding": {
+        "x": {
+          "field": "holdout_cvr",
+          "type": "quantitative",
+          "title": "Conversion rate (grey = holdout, dot = target)",
+          "axis": { "format": ".1%" }
+        },
+        "x2": { "field": "target_cvr" },
+        "color": {
+          "field": "lift_direction",
+          "type": "nominal",
+          "title": "Lift",
+          "scale": {
+            "domain": ["Positive lift", "No or negative lift"],
+            "range": ["#2E7D32", "#D7263D"]
+          }
+        }
+      }
+    },
+    {
+      "transform": [
+        { "fold": ["target_cvr", "holdout_cvr"], "as": ["series_key", "cvr"] },
+        { "calculate": "datum.series_key == 'target_cvr' ? 'Target' : 'Holdout'", "as": "series" }
+      ],
+      "mark": { "type": "point", "filled": true, "size": 160, "opacity": 1 },
+      "encoding": {
+        "x": { "field": "cvr", "type": "quantitative" },
+        "color": {
+          "condition": { "test": "datum.series == 'Holdout'", "value": "#9AA0A6" },
+          "field": "lift_direction",
+          "type": "nominal",
+          "legend": null,
+          "scale": {
+            "domain": ["Positive lift", "No or negative lift"],
+            "range": ["#2E7D32", "#D7263D"]
+          }
+        },
+        "tooltip": [
+          { "field": "segment", "type": "nominal", "title": "Segment" },
+          { "field": "series", "type": "nominal", "title": "Group" },
+          { "field": "cvr", "type": "quantitative", "title": "CVR", "format": ".2%" },
+          { "field": "lift", "type": "quantitative", "title": "Lift (pts)", "format": ".2%" },
+          { "field": "target_households", "type": "quantitative", "title": "Target households", "format": "," },
+          { "field": "holdout_households", "type": "quantitative", "title": "Holdout households", "format": "," }
+        ]
+      }
+    }
+  ]
+}

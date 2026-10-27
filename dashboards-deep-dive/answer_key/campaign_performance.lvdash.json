@@ -1,0 +1,1669 @@
+{
+  "datasets": [
+    {
+      "name": "ds_detail",
+      "displayName": "Campaign results (all households)",
+      "queryLines": [
+        "SELECT *, conversion_value - contact_cost AS net_value ",
+        "FROM campaign_results_detail"
+      ]
+    },
+    {
+      "name": "ds_target",
+      "displayName": "Campaign results (Target only)",
+      "queryLines": [
+        "SELECT *, conversion_value - contact_cost AS net_value ",
+        "FROM campaign_results_detail ",
+        "WHERE audience_group = 'Target'"
+      ]
+    },
+    {
+      "name": "ds_lift",
+      "displayName": "Lift by campaign",
+      "queryLines": [
+        "SELECT campaign_name, channel, ",
+        "AVG(CASE WHEN audience_group = 'Target' THEN converted END) AS target_cvr, ",
+        "AVG(CASE WHEN audience_group = 'Holdout' THEN converted END) AS holdout_cvr, ",
+        "AVG(CASE WHEN audience_group = 'Target' THEN converted END) ",
+        "- AVG(CASE WHEN audience_group = 'Holdout' THEN converted END) AS lift ",
+        "FROM campaign_results_detail ",
+        "GROUP BY campaign_name, channel ",
+        "ORDER BY lift DESC"
+      ]
+    },
+    {
+      "name": "ds_roi",
+      "displayName": "Lift and ROI by campaign and segment",
+      "queryLines": [
+        "SELECT campaign_name, channel, segment, target_contacts, target_cvr, ",
+        "holdout_cvr, lift, incremental_value, cost, ",
+        "incremental_value - cost AS net_incremental_value, roi ",
+        "FROM campaign_lift_roi ",
+        "ORDER BY roi DESC"
+      ]
+    },
+    {
+      "name": "ds_bullet",
+      "displayName": "01_bullet_target_vs_holdout_cvr",
+      "queryLines": [
+        "SELECT\n",
+        "  campaign_name,\n",
+        "  CAST(SUM(CASE WHEN audience_group = 'Target' THEN converted END) AS DOUBLE)\n",
+        "    / SUM(CASE WHEN audience_group = 'Target' THEN 1 END) AS target_cvr,\n",
+        "  CAST(SUM(CASE WHEN audience_group = 'Holdout' THEN converted END) AS DOUBLE)\n",
+        "    / SUM(CASE WHEN audience_group = 'Holdout' THEN 1 END) AS holdout_cvr\n",
+        "FROM campaign_results_detail\n",
+        "GROUP BY campaign_name\n",
+        "ORDER BY campaign_name\n"
+      ]
+    },
+    {
+      "name": "ds_dumbbell",
+      "displayName": "04_dumbbell_cvr_by_segment",
+      "queryLines": [
+        "WITH seg AS (\n",
+        "  SELECT\n",
+        "    segment,\n",
+        "    CAST(SUM(CASE WHEN audience_group = 'Target' THEN converted END) AS DOUBLE)\n",
+        "      / SUM(CASE WHEN audience_group = 'Target' THEN 1 END) AS target_cvr,\n",
+        "    CAST(SUM(CASE WHEN audience_group = 'Holdout' THEN converted END) AS DOUBLE)\n",
+        "      / SUM(CASE WHEN audience_group = 'Holdout' THEN 1 END) AS holdout_cvr,\n",
+        "    SUM(CASE WHEN audience_group = 'Target' THEN 1 ELSE 0 END)  AS target_households,\n",
+        "    SUM(CASE WHEN audience_group = 'Holdout' THEN 1 ELSE 0 END) AS holdout_households\n",
+        "  FROM campaign_results_detail\n",
+        "  GROUP BY segment\n",
+        ")\n",
+        "SELECT\n",
+        "  segment,\n",
+        "  ROUND(target_cvr, 4)  AS target_cvr,\n",
+        "  ROUND(holdout_cvr, 4) AS holdout_cvr,\n",
+        "  ROUND(target_cvr - holdout_cvr, 4) AS lift,\n",
+        "  target_households,\n",
+        "  holdout_households\n",
+        "FROM seg\n",
+        "ORDER BY lift DESC\n"
+      ]
+    },
+    {
+      "name": "ds_funnel",
+      "displayName": "02_funnel_target_stages",
+      "queryLines": [
+        "SELECT\n",
+        "  campaign_name,\n",
+        "  SUM(delivered) AS delivered,\n",
+        "  SUM(opened)    AS opened,\n",
+        "  SUM(clicked)   AS clicked,\n",
+        "  SUM(responded) AS responded,\n",
+        "  SUM(converted) AS converted\n",
+        "FROM campaign_results_detail\n",
+        "WHERE audience_group = 'Target'\n",
+        "GROUP BY campaign_name\n",
+        "ORDER BY campaign_name\n"
+      ]
+    },
+    {
+      "name": "ds_waterfall",
+      "displayName": "03_waterfall_net_by_campaign",
+      "queryLines": [
+        "WITH per_campaign AS (\n",
+        "  SELECT\n",
+        "    campaign_name,\n",
+        "    CAST(SUM(incremental_value) AS DOUBLE) AS incremental_value,\n",
+        "    CAST(SUM(cost) AS DOUBLE)              AS cost\n",
+        "  FROM campaign_lift_roi\n",
+        "  GROUP BY campaign_name\n",
+        "),\n",
+        "steps AS (\n",
+        "  SELECT\n",
+        "    campaign_name,\n",
+        "    incremental_value,\n",
+        "    cost,\n",
+        "    incremental_value - cost AS net_value,\n",
+        "    'step' AS bar_type,\n",
+        "    ROW_NUMBER() OVER (ORDER BY incremental_value - cost DESC) AS step_order\n",
+        "  FROM per_campaign\n",
+        "),\n",
+        "total AS (\n",
+        "  SELECT\n",
+        "    'Total' AS campaign_name,\n",
+        "    SUM(incremental_value) AS incremental_value,\n",
+        "    SUM(cost) AS cost,\n",
+        "    SUM(incremental_value - cost) AS net_value,\n",
+        "    'total' AS bar_type,\n",
+        "    99 AS step_order\n",
+        "  FROM per_campaign\n",
+        ")\n",
+        "SELECT * FROM steps\n",
+        "UNION ALL\n",
+        "SELECT * FROM total\n",
+        "ORDER BY step_order\n"
+      ]
+    },
+    {
+      "name": "ds_crossfilter",
+      "displayName": "05_crossfilter_incremental_by_campaign",
+      "queryLines": [
+        "SELECT\n",
+        "  campaign_name,\n",
+        "  CAST(SUM(incremental_value) AS DOUBLE) AS incremental_value,\n",
+        "  CAST(SUM(cost) AS DOUBLE)              AS cost\n",
+        "FROM campaign_lift_roi\n",
+        "GROUP BY campaign_name\n",
+        "ORDER BY campaign_name\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Campaign Performance",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1",
+      "layout": [
+        {
+          "widget": {
+            "name": "title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Campaign Performance",
+                "Target households were contacted; **Holdout** households were not. The gap between them is the lift each campaign caused."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_contacts",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "count(household_id)",
+                      "expression": "COUNT(`household_id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(household_id)",
+                  "displayName": "Target contacts",
+                  "format": {
+                    "type": "number-plain",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Target contacts"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_conversions",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "sum(converted)",
+                      "expression": "SUM(`converted`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(converted)",
+                  "displayName": "Conversions",
+                  "format": {
+                    "type": "number-plain",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Conversions"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_cvr",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "avg(converted)",
+                      "expression": "AVG(`converted`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(converted)",
+                  "displayName": "Conversion rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Conversion rate"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_net",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "sum(net_value)",
+                      "expression": "SUM(`net_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(net_value)",
+                  "displayName": "Net value",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Net value"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "cvr_by_campaign",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_detail",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "audience_group",
+                      "expression": "`audience_group`"
+                    },
+                    {
+                      "name": "avg(converted)",
+                      "expression": "AVG(`converted`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "campaign_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Campaign"
+                },
+                "y": {
+                  "fieldName": "avg(converted)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Conversion rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "audience_group",
+                  "displayName": "Audience",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Target",
+                        "color": "#00A3A1"
+                      },
+                      {
+                        "value": "Holdout",
+                        "color": "#9AA5B1"
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Conversion rate: Target vs Holdout"
+              },
+              "mark": {
+                "layout": "group"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "lift_by_campaign",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_lift",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "sum(lift)",
+                      "expression": "SUM(`lift`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "campaign_name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  },
+                  "displayName": "Campaign"
+                },
+                "y": {
+                  "fieldName": "sum(lift)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Lift (pts)",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lift by campaign (Target minus Holdout conversion rate)"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 5,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "weekly_conversions",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "weekly(send_date)",
+                      "expression": "DATE_TRUNC(\"WEEK\", `send_date`)"
+                    },
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "sum(converted)",
+                      "expression": "SUM(`converted`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "weekly(send_date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Week"
+                },
+                "y": {
+                  "fieldName": "sum(converted)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Conversions"
+                },
+                "color": {
+                  "fieldName": "campaign_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Campaign"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Weekly conversions by campaign"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "net_by_channel",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "channel",
+                      "expression": "`channel`"
+                    },
+                    {
+                      "name": "sum(net_value)",
+                      "expression": "SUM(`net_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "channel",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  },
+                  "displayName": "Channel"
+                },
+                "y": {
+                  "fieldName": "sum(net_value)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Net value",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Net value by channel (Target)"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 11,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ]
+    },
+    {
+      "name": "segments",
+      "displayName": "Segment Detail",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1",
+      "layout": [
+        {
+          "widget": {
+            "name": "seg_title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Segment Detail",
+                "Lift and ROI by campaign and segment. Rollover Retargeting shows no incremental return in any segment."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "cvr_by_region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    },
+                    {
+                      "name": "avg(converted)",
+                      "expression": "AVG(`converted`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "region",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  },
+                  "displayName": "Region"
+                },
+                "y": {
+                  "fieldName": "avg(converted)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Conversion rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Target conversion rate by region"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "cvr_by_engagement",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "engagement_band",
+                      "expression": "`engagement_band`"
+                    },
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "avg(converted)",
+                      "expression": "AVG(`converted`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "engagement_band",
+                  "displayName": "Engagement",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "Low",
+                        "Medium",
+                        "High"
+                      ]
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(converted)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Conversion rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "campaign_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Campaign"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Target conversion rate by engagement"
+              },
+              "mark": {
+                "layout": "group"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "roi_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_roi",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "channel",
+                      "expression": "`channel`"
+                    },
+                    {
+                      "name": "segment",
+                      "expression": "`segment`"
+                    },
+                    {
+                      "name": "target_contacts",
+                      "expression": "`target_contacts`"
+                    },
+                    {
+                      "name": "target_cvr",
+                      "expression": "`target_cvr`"
+                    },
+                    {
+                      "name": "holdout_cvr",
+                      "expression": "`holdout_cvr`"
+                    },
+                    {
+                      "name": "lift",
+                      "expression": "`lift`"
+                    },
+                    {
+                      "name": "net_incremental_value",
+                      "expression": "`net_incremental_value`"
+                    },
+                    {
+                      "name": "roi",
+                      "expression": "`roi`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "campaign_name",
+                    "displayName": "Campaign"
+                  },
+                  {
+                    "fieldName": "channel",
+                    "displayName": "Channel"
+                  },
+                  {
+                    "fieldName": "segment",
+                    "displayName": "Segment"
+                  },
+                  {
+                    "fieldName": "target_contacts",
+                    "displayName": "Targeted"
+                  },
+                  {
+                    "fieldName": "target_cvr",
+                    "displayName": "Target CVR",
+                    "format": {
+                      "type": "number-percent",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 1
+                      }
+                    }
+                  },
+                  {
+                    "fieldName": "holdout_cvr",
+                    "displayName": "Holdout CVR",
+                    "format": {
+                      "type": "number-percent",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 1
+                      }
+                    }
+                  },
+                  {
+                    "fieldName": "lift",
+                    "displayName": "Lift",
+                    "format": {
+                      "type": "number-percent",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 1
+                      }
+                    }
+                  },
+                  {
+                    "fieldName": "net_incremental_value",
+                    "displayName": "Net incremental $",
+                    "format": {
+                      "type": "number-currency",
+                      "currencyCode": "USD",
+                      "abbreviation": "compact",
+                      "decimalPlaces": {
+                        "type": "max",
+                        "places": 2
+                      }
+                    }
+                  },
+                  {
+                    "fieldName": "roi",
+                    "displayName": "ROI (x)"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lift and ROI by campaign and segment"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 12,
+            "height": 7
+          }
+        }
+      ]
+    },
+    {
+      "name": "vega",
+      "displayName": "Beyond Built-ins (Vega-Lite)",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1",
+      "layout": [
+        {
+          "widget": {
+            "name": "vega_title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Beyond the built-in charts (Vega-Lite)",
+                "Custom Viz widgets: each one is a Vega-Lite spec bound to a dataset. Specs and SQL are in the `vega-lite/` folder."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_cv_bullet",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_bullet",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "target_cvr",
+                      "expression": "`target_cvr`"
+                    },
+                    {
+                      "name": "holdout_cvr",
+                      "expression": "`holdout_cvr`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "custom-vega-viz",
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"encoding\": {\"y\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"sort\": {\"field\": \"target_cvr\", \"order\": \"descending\"}}, \"x\": {\"field\": \"target_cvr\", \"type\": \"quantitative\", \"title\": \"Conversion rate (converted / households)\", \"axis\": {\"format\": \".1%\"}, \"scale\": {\"domainMin\": 0}}}, \"layer\": [{\"mark\": {\"type\": \"bar\", \"color\": \"#1F3A5F\", \"size\": 18}, \"encoding\": {\"tooltip\": [{\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": \"Campaign\"}, {\"field\": \"target_cvr\", \"type\": \"quantitative\", \"title\": \"Target CVR\", \"format\": \".2%\"}, {\"field\": \"holdout_cvr\", \"type\": \"quantitative\", \"title\": \"Holdout CVR (reference)\", \"format\": \".2%\"}]}}, {\"mark\": {\"type\": \"tick\", \"color\": \"#D7263D\", \"thickness\": 3, \"size\": 28}, \"encoding\": {\"x\": {\"field\": \"holdout_cvr\", \"type\": \"quantitative\"}}}, {\"mark\": {\"type\": \"text\", \"align\": \"left\", \"dx\": 6, \"color\": \"#1F3A5F\"}, \"encoding\": {\"x\": {\"field\": \"target_cvr\", \"type\": \"quantitative\"}, \"text\": {\"field\": \"target_cvr\", \"type\": \"quantitative\", \"format\": \".1%\"}}}]}"
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Bullet: Target conversion rate vs Holdout (tick)"
+              },
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "campaign_name"
+                  },
+                  {
+                    "fieldName": "target_cvr"
+                  },
+                  {
+                    "fieldName": "holdout_cvr"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w_cv_dumbbell",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_dumbbell",
+                  "fields": [
+                    {
+                      "name": "segment",
+                      "expression": "`segment`"
+                    },
+                    {
+                      "name": "target_cvr",
+                      "expression": "`target_cvr`"
+                    },
+                    {
+                      "name": "holdout_cvr",
+                      "expression": "`holdout_cvr`"
+                    },
+                    {
+                      "name": "lift",
+                      "expression": "`lift`"
+                    },
+                    {
+                      "name": "target_households",
+                      "expression": "`target_households`"
+                    },
+                    {
+                      "name": "holdout_households",
+                      "expression": "`holdout_households`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "custom-vega-viz",
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"transform\": [{\"calculate\": \"datum.lift > 0 ? 'Positive lift' : 'No or negative lift'\", \"as\": \"lift_direction\"}], \"encoding\": {\"y\": {\"field\": \"segment\", \"type\": \"nominal\", \"title\": null, \"sort\": {\"field\": \"lift\", \"order\": \"descending\"}}}, \"layer\": [{\"mark\": {\"type\": \"rule\", \"strokeWidth\": 3}, \"encoding\": {\"x\": {\"field\": \"holdout_cvr\", \"type\": \"quantitative\", \"title\": \"Conversion rate (grey = holdout, dot = target)\", \"axis\": {\"format\": \".1%\"}}, \"x2\": {\"field\": \"target_cvr\"}, \"color\": {\"field\": \"lift_direction\", \"type\": \"nominal\", \"title\": \"Lift\", \"scale\": {\"domain\": [\"Positive lift\", \"No or negative lift\"], \"range\": [\"#2E7D32\", \"#D7263D\"]}}}}, {\"transform\": [{\"fold\": [\"target_cvr\", \"holdout_cvr\"], \"as\": [\"series_key\", \"cvr\"]}, {\"calculate\": \"datum.series_key == 'target_cvr' ? 'Target' : 'Holdout'\", \"as\": \"series\"}], \"mark\": {\"type\": \"point\", \"filled\": true, \"size\": 160, \"opacity\": 1}, \"encoding\": {\"x\": {\"field\": \"cvr\", \"type\": \"quantitative\"}, \"color\": {\"condition\": {\"test\": \"datum.series == 'Holdout'\", \"value\": \"#9AA0A6\"}, \"field\": \"lift_direction\", \"type\": \"nominal\", \"legend\": null, \"scale\": {\"domain\": [\"Positive lift\", \"No or negative lift\"], \"range\": [\"#2E7D32\", \"#D7263D\"]}}, \"tooltip\": [{\"field\": \"segment\", \"type\": \"nominal\", \"title\": \"Segment\"}, {\"field\": \"series\", \"type\": \"nominal\", \"title\": \"Group\"}, {\"field\": \"cvr\", \"type\": \"quantitative\", \"title\": \"CVR\", \"format\": \".2%\"}, {\"field\": \"lift\", \"type\": \"quantitative\", \"title\": \"Lift (pts)\", \"format\": \".2%\"}, {\"field\": \"target_households\", \"type\": \"quantitative\", \"title\": \"Target households\", \"format\": \",\"}, {\"field\": \"holdout_households\", \"type\": \"quantitative\", \"title\": \"Holdout households\", \"format\": \",\"}]}}]}"
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Dumbbell: Target vs Holdout conversion rate by segment"
+              },
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "segment"
+                  },
+                  {
+                    "fieldName": "target_cvr"
+                  },
+                  {
+                    "fieldName": "holdout_cvr"
+                  },
+                  {
+                    "fieldName": "lift"
+                  },
+                  {
+                    "fieldName": "target_households"
+                  },
+                  {
+                    "fieldName": "holdout_households"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w_cv_funnel",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_funnel",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "delivered",
+                      "expression": "`delivered`"
+                    },
+                    {
+                      "name": "opened",
+                      "expression": "`opened`"
+                    },
+                    {
+                      "name": "clicked",
+                      "expression": "`clicked`"
+                    },
+                    {
+                      "name": "responded",
+                      "expression": "`responded`"
+                    },
+                    {
+                      "name": "converted",
+                      "expression": "`converted`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "custom-vega-viz",
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"transform\": [{\"fold\": [\"delivered\", \"opened\", \"clicked\", \"responded\", \"converted\"], \"as\": [\"stage\", \"count\"]}, {\"filter\": \"datum.count != null\"}, {\"calculate\": \"-datum.count / 2\", \"as\": \"bar_left\"}, {\"calculate\": \"datum.count / 2\", \"as\": \"bar_right\"}], \"facet\": {\"row\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"header\": {\"labelOrient\": \"top\", \"labelAnchor\": \"start\", \"labelFontWeight\": \"bold\", \"labelAlign\": \"left\"}}}, \"spec\": {\"height\": {\"step\": 26}, \"encoding\": {\"y\": {\"field\": \"stage\", \"type\": \"ordinal\", \"title\": null, \"sort\": [\"delivered\", \"opened\", \"clicked\", \"responded\", \"converted\"]}, \"x\": {\"field\": \"bar_left\", \"type\": \"quantitative\", \"axis\": null, \"title\": null}, \"x2\": {\"field\": \"bar_right\"}, \"color\": {\"field\": \"stage\", \"type\": \"nominal\", \"legend\": null, \"scale\": {\"domain\": [\"delivered\", \"opened\", \"clicked\", \"responded\", \"converted\"], \"range\": [\"#1F3A5F\", \"#24507A\", \"#2D6A96\", \"#3C84B0\", \"#D7263D\"]}}, \"tooltip\": [{\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": \"Campaign\"}, {\"field\": \"stage\", \"type\": \"nominal\", \"title\": \"Stage\"}, {\"field\": \"count\", \"type\": \"quantitative\", \"title\": \"Target households\", \"format\": \",\"}]}, \"layer\": [{\"mark\": {\"type\": \"bar\"}}, {\"mark\": {\"type\": \"text\", \"color\": \"#FFFFFF\", \"fontWeight\": \"bold\"}, \"encoding\": {\"x\": {\"datum\": 0}, \"text\": {\"field\": \"count\", \"type\": \"quantitative\", \"format\": \",\"}}}]}}"
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Funnel: Target audience by campaign"
+              },
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "campaign_name"
+                  },
+                  {
+                    "fieldName": "delivered"
+                  },
+                  {
+                    "fieldName": "opened"
+                  },
+                  {
+                    "fieldName": "clicked"
+                  },
+                  {
+                    "fieldName": "responded"
+                  },
+                  {
+                    "fieldName": "converted"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "w_cv_waterfall",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_waterfall",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "incremental_value",
+                      "expression": "`incremental_value`"
+                    },
+                    {
+                      "name": "cost",
+                      "expression": "`cost`"
+                    },
+                    {
+                      "name": "net_value",
+                      "expression": "`net_value`"
+                    },
+                    {
+                      "name": "bar_type",
+                      "expression": "`bar_type`"
+                    },
+                    {
+                      "name": "step_order",
+                      "expression": "`step_order`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "custom-vega-viz",
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"transform\": [{\"window\": [{\"op\": \"sum\", \"field\": \"net_value\", \"as\": \"running_total\"}], \"sort\": [{\"field\": \"step_order\", \"order\": \"ascending\"}]}, {\"calculate\": \"datum.bar_type == 'total' ? 0 : datum.running_total - datum.net_value\", \"as\": \"bar_start\"}, {\"calculate\": \"datum.bar_type == 'total' ? datum.net_value : datum.running_total\", \"as\": \"bar_end\"}, {\"calculate\": \"datum.bar_type == 'total' ? 'Total' : (datum.net_value < 0 ? 'Negative' : 'Positive')\", \"as\": \"direction\"}], \"encoding\": {\"x\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"sort\": {\"field\": \"step_order\", \"op\": \"min\", \"order\": \"ascending\"}, \"axis\": {\"labelAngle\": 0, \"labelLimit\": 180}}, \"y\": {\"field\": \"bar_start\", \"type\": \"quantitative\", \"title\": \"Net value (USD)\", \"axis\": {\"format\": \"$,.0f\"}}}, \"layer\": [{\"mark\": {\"type\": \"rule\", \"color\": \"#6B7280\"}, \"encoding\": {\"y\": {\"datum\": 0}}}, {\"mark\": {\"type\": \"bar\", \"size\": 48}, \"encoding\": {\"y\": {\"field\": \"bar_start\", \"type\": \"quantitative\"}, \"y2\": {\"field\": \"bar_end\"}, \"color\": {\"field\": \"direction\", \"type\": \"nominal\", \"legend\": {\"title\": null}, \"scale\": {\"domain\": [\"Positive\", \"Negative\", \"Total\"], \"range\": [\"#2E7D32\", \"#D7263D\", \"#1F3A5F\"]}}, \"tooltip\": [{\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": \"Campaign\"}, {\"field\": \"incremental_value\", \"type\": \"quantitative\", \"title\": \"Incremental value\", \"format\": \"$,.0f\"}, {\"field\": \"cost\", \"type\": \"quantitative\", \"title\": \"Cost\", \"format\": \"$,.0f\"}, {\"field\": \"net_value\", \"type\": \"quantitative\", \"title\": \"Net\", \"format\": \"$,.0f\"}]}}, {\"mark\": {\"type\": \"text\", \"dy\": -10, \"fontWeight\": \"bold\"}, \"encoding\": {\"y\": {\"field\": \"bar_end\", \"type\": \"quantitative\"}, \"text\": {\"field\": \"net_value\", \"type\": \"quantitative\", \"format\": \"$,.0f\"}}}]}"
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Waterfall: net incremental value by campaign"
+              },
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "campaign_name"
+                  },
+                  {
+                    "fieldName": "incremental_value"
+                  },
+                  {
+                    "fieldName": "cost"
+                  },
+                  {
+                    "fieldName": "net_value"
+                  },
+                  {
+                    "fieldName": "bar_type"
+                  },
+                  {
+                    "fieldName": "step_order"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 8,
+            "width": 6,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "w_cv_crossfilter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_crossfilter",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "incremental_value",
+                      "expression": "`incremental_value`"
+                    },
+                    {
+                      "name": "cost",
+                      "expression": "`cost`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "custom-vega-viz",
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"params\": [{\"name\": \"databricks_mark_selection\", \"select\": {\"type\": \"point\", \"fields\": [\"campaign_name\"]}}], \"mark\": {\"type\": \"bar\", \"stroke\": null}, \"encoding\": {\"x\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"axis\": {\"labelAngle\": 0, \"labelLimit\": 180}}, \"y\": {\"field\": \"incremental_value\", \"type\": \"quantitative\", \"title\": \"Incremental value (USD)\", \"axis\": {\"format\": \"$,.0f\"}}, \"color\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"legend\": null}, \"fillOpacity\": {\"condition\": {\"param\": \"databricks_mark_selection\", \"value\": 1}, \"value\": 0.3}, \"stroke\": {\"condition\": {\"param\": \"databricks_mark_selection\", \"empty\": false, \"value\": {\"expr\": \"colors.markHighlightColor\"}}, \"value\": null}, \"strokeWidth\": {\"condition\": {\"param\": \"databricks_mark_selection\", \"empty\": false, \"value\": 2}, \"value\": 0}, \"tooltip\": [{\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": \"Campaign\"}, {\"field\": \"incremental_value\", \"type\": \"quantitative\", \"title\": \"Incremental value\", \"format\": \"$,.0f\"}, {\"field\": \"cost\", \"type\": \"quantitative\", \"title\": \"Cost\", \"format\": \"$,.0f\"}]}}"
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Click a bar to cross-filter"
+              },
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "campaign_name"
+                  },
+                  {
+                    "fieldName": "incremental_value"
+                  },
+                  {
+                    "fieldName": "cost"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w_cv_cost_check",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_crossfilter",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    },
+                    {
+                      "name": "cost",
+                      "expression": "`cost`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "custom-vega-viz",
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"mark\": {\"type\": \"bar\", \"color\": \"#1F3A5F\"}, \"encoding\": {\"x\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"axis\": {\"labelAngle\": 0}}, \"y\": {\"field\": \"cost\", \"type\": \"quantitative\", \"title\": \"Cost (USD)\", \"axis\": {\"format\": \"$,.0f\"}}}}"
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cost by campaign (filtered by the click)"
+              },
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "campaign_name"
+                  },
+                  {
+                    "fieldName": "cost"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 18,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ]
+    },
+    {
+      "name": "filters",
+      "displayName": "Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layout": [
+        {
+          "widget": {
+            "name": "f_campaign",
+            "queries": [
+              {
+                "name": "ds_detail_campaign_name",
+                "query": {
+                  "datasetName": "ds_detail",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_target_campaign_name",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_lift_campaign_name",
+                "query": {
+                  "datasetName": "ds_lift",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_roi_campaign_name",
+                "query": {
+                  "datasetName": "ds_roi",
+                  "fields": [
+                    {
+                      "name": "campaign_name",
+                      "expression": "`campaign_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "campaign_name",
+                    "displayName": "Campaign",
+                    "queryName": "ds_detail_campaign_name"
+                  },
+                  {
+                    "fieldName": "campaign_name",
+                    "displayName": "Campaign",
+                    "queryName": "ds_target_campaign_name"
+                  },
+                  {
+                    "fieldName": "campaign_name",
+                    "displayName": "Campaign",
+                    "queryName": "ds_lift_campaign_name"
+                  },
+                  {
+                    "fieldName": "campaign_name",
+                    "displayName": "Campaign",
+                    "queryName": "ds_roi_campaign_name"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Campaign"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_region",
+            "queries": [
+              {
+                "name": "ds_detail_region",
+                "query": {
+                  "datasetName": "ds_detail",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_target_region",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "ds_detail_region"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "ds_target_region"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Region"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_send_date",
+            "queries": [
+              {
+                "name": "ds_target_send_date",
+                "query": {
+                  "datasetName": "ds_target",
+                  "fields": [
+                    {
+                      "name": "send_date",
+                      "expression": "`send_date`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "send_date",
+                    "displayName": "Send date",
+                    "queryName": "ds_target_send_date"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Send date"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        }
+      ]
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F7F9FA",
+        "dark": "#1F272D"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "widgetBorderColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "fontColor": {
+        "light": "#11171C",
+        "dark": "#E8ECF0"
+      },
+      "selectionColor": {
+        "light": "#2272B4",
+        "dark": "#8ACAFF"
+      },
+      "visualizationColors": [
+        "#00A3A1",
+        "#1D425C",
+        "#F59E0B",
+        "#7C5CBF",
+        "#E5484D",
+        "#9AA5B1",
+        "#4E79A7"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "widgetCornerRadius": 8
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "width": "container",
+  "height": "container",
+  "config": {
+    "autosize": { "type": "fit", "contains": "padding" },
+    "view": { "stroke": null }
+  },
+  "data": { "name": "databricks_query" },
+  "params": [
+    {
+      "name": "databricks_mark_selection",
+      "select": { "type": "point", "fields": ["campaign_name"] }
+    }
+  ],
+  "mark": { "type": "bar", "stroke": null },
+  "encoding": {
+    "x": {
+      "field": "campaign_name",
+      "type": "nominal",
+      "title": null,
+      "axis": { "labelAngle": 0, "labelLimit": 180 }
+    },
+    "y": {
+      "field": "incremental_value",
+      "type": "quantitative",
+      "title": "Incremental value (USD)",
+      "axis": { "format": "$,.0f" }
+    },
+    "color": {
+      "field": "campaign_name",
+      "type": "nominal",
+      "legend": null
+    },
+    "fillOpacity": {
+      "condition": { "param": "databricks_mark_selection", "value": 1 },
+      "value": 0.3
+    },
+    "stroke": {
+      "condition": {
+        "param": "databricks_mark_selection",
+        "empty": false,
+        "value": { "expr": "colors.markHighlightColor" }
+      },
+      "value": null
+    },
+    "strokeWidth": {
+      "condition": { "param": "databricks_mark_selection", "empty": false, "value": 2 },
+      "value": 0
+    },
+    "tooltip": [
+      { "field": "campaign_name", "type": "nominal", "title": "Campaign" },
+      { "field": "incremental_value", "type": "quantitative", "title": "Incremental value", "format": "$,.0f" },
+      { "field": "cost", "type": "quantitative", "title": "Cost", "format": "$,.0f" }
+    ]
+  }
+}

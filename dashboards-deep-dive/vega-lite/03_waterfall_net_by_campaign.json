@@ -1,0 +1,69 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "width": "container",
+  "height": "container",
+  "config": {
+    "autosize": { "type": "fit", "contains": "padding" },
+    "view": { "stroke": null }
+  },
+  "data": { "name": "databricks_query" },
+  "transform": [
+    {
+      "window": [{ "op": "sum", "field": "net_value", "as": "running_total" }],
+      "sort": [{ "field": "step_order", "order": "ascending" }]
+    },
+    { "calculate": "datum.bar_type == 'total' ? 0 : datum.running_total - datum.net_value", "as": "bar_start" },
+    { "calculate": "datum.bar_type == 'total' ? datum.net_value : datum.running_total", "as": "bar_end" },
+    { "calculate": "datum.bar_type == 'total' ? 'Total' : (datum.net_value < 0 ? 'Negative' : 'Positive')", "as": "direction" }
+  ],
+  "encoding": {
+    "x": {
+      "field": "campaign_name",
+      "type": "nominal",
+      "title": null,
+      "sort": { "field": "step_order", "op": "min", "order": "ascending" },
+      "axis": { "labelAngle": 0, "labelLimit": 180 }
+    },
+    "y": {
+      "field": "bar_start",
+      "type": "quantitative",
+      "title": "Net value (USD)",
+      "axis": { "format": "$,.0f" }
+    }
+  },
+  "layer": [
+    {
+      "mark": { "type": "rule", "color": "#6B7280" },
+      "encoding": { "y": { "datum": 0 } }
+    },
+    {
+      "mark": { "type": "bar", "size": 48 },
+      "encoding": {
+        "y": { "field": "bar_start", "type": "quantitative" },
+        "y2": { "field": "bar_end" },
+        "color": {
+          "field": "direction",
+          "type": "nominal",
+          "legend": { "title": null },
+          "scale": {
+            "domain": ["Positive", "Negative", "Total"],
+            "range": ["#2E7D32", "#D7263D", "#1F3A5F"]
+          }
+        },
+        "tooltip": [
+          { "field": "campaign_name", "type": "nominal", "title": "Campaign" },
+          { "field": "incremental_value", "type": "quantitative", "title": "Incremental value", "format": "$,.0f" },
+          { "field": "cost", "type": "quantitative", "title": "Cost", "format": "$,.0f" },
+          { "field": "net_value", "type": "quantitative", "title": "Net", "format": "$,.0f" }
+        ]
+      }
+    },
+    {
+      "mark": { "type": "text", "dy": -10, "fontWeight": "bold" },
+      "encoding": {
+        "y": { "field": "bar_end", "type": "quantitative" },
+        "text": { "field": "net_value", "type": "quantitative", "format": "$,.0f" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,430 @@
+[
+ {
+  "widget": {
+   "name": "w_cv_bullet",
+   "queries": [
+    {
+     "name": "main_query",
+     "query": {
+      "datasetName": "ds_bullet",
+      "fields": [
+       {
+        "name": "campaign_name",
+        "expression": "`campaign_name`"
+       },
+       {
+        "name": "target_cvr",
+        "expression": "`target_cvr`"
+       },
+       {
+        "name": "holdout_cvr",
+        "expression": "`holdout_cvr`"
+       }
+      ],
+      "disaggregated": true
+     }
+    }
+   ],
+   "spec": {
+    "version": 1,
+    "widgetType": "custom-vega-viz",
+    "jsonSpec": {
+     "type": "vega-lite",
+     "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"encoding\": {\"y\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"sort\": {\"field\": \"target_cvr\", \"order\": \"descending\"}}, \"x\": {\"field\": \"target_cvr\", \"type\": \"quantitative\", \"title\": \"Conversion rate (converted / households)\", \"axis\": {\"format\": \".1%\"}, \"scale\": {\"domainMin\": 0}}}, \"layer\": [{\"mark\": {\"type\": \"bar\", \"color\": \"#1F3A5F\", \"size\": 18}, \"encoding\": {\"tooltip\": [{\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": \"Campaign\"}, {\"field\": \"target_cvr\", \"type\": \"quantitative\", \"title\": \"Target CVR\", \"format\": \".2%\"}, {\"field\": \"holdout_cvr\", \"type\": \"quantitative\", \"title\": \"Holdout CVR (reference)\", \"format\": \".2%\"}]}}, {\"mark\": {\"type\": \"tick\", \"color\": \"#D7263D\", \"thickness\": 3, \"size\": 28}, \"encoding\": {\"x\": {\"field\": \"holdout_cvr\", \"type\": \"quantitative\"}}}, {\"mark\": {\"type\": \"text\", \"align\": \"left\", \"dx\": 6, \"color\": \"#1F3A5F\"}, \"encoding\": {\"x\": {\"field\": \"target_cvr\", \"type\": \"quantitative\"}, \"text\": {\"field\": \"target_cvr\", \"type\": \"quantitative\", \"format\": \".1%\"}}}]}"
+    },
+    "frame": {
+     "title": "1. Bullet: Target CVR vs Holdout (tick)",
+     "showTitle": true
+    },
+    "encodings": {
+     "fields": [
+      {
+       "fieldName": "campaign_name"
+      },
+      {
+       "fieldName": "target_cvr"
+      },
+      {
+       "fieldName": "holdout_cvr"
+      }
+     ]
+    },
+    "data": {
+     "queryName": "main_query"
+    }
+   }
+  },
+  "position": {
+   "x": 0,
+   "y": 0,
+   "width": 6,
+   "height": 6
+  }
+ },
+ {
+  "widget": {
+   "name": "w_cv_funnel",
+   "queries": [
+    {
+     "name": "main_query",
+     "query": {
+      "datasetName": "ds_funnel",
+      "fields": [
+       {
+        "name": "campaign_name",
+        "expression": "`campaign_name`"
+       },
+       {
+        "name": "delivered",
+        "expression": "`delivered`"
+       },
+       {
+        "name": "opened",
+        "expression": "`opened`"
+       },
+       {
+        "name": "clicked",
+        "expression": "`clicked`"
+       },
+       {
+        "name": "responded",
+        "expression": "`responded`"
+       },
+       {
+        "name": "converted",
+        "expression": "`converted`"
+       }
+      ],
+      "disaggregated": true
+     }
+    }
+   ],
+   "spec": {
+    "version": 1,
+    "widgetType": "custom-vega-viz",
+    "jsonSpec": {
+     "type": "vega-lite",
+     "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"transform\": [{\"fold\": [\"delivered\", \"opened\", \"clicked\", \"responded\", \"converted\"], \"as\": [\"stage\", \"count\"]}, {\"filter\": \"datum.count != null\"}, {\"calculate\": \"-datum.count / 2\", \"as\": \"bar_left\"}, {\"calculate\": \"datum.count / 2\", \"as\": \"bar_right\"}], \"facet\": {\"row\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"header\": {\"labelOrient\": \"top\", \"labelAnchor\": \"start\", \"labelFontWeight\": \"bold\", \"labelAlign\": \"left\"}}}, \"spec\": {\"height\": {\"step\": 26}, \"encoding\": {\"y\": {\"field\": \"stage\", \"type\": \"ordinal\", \"title\": null, \"sort\": [\"delivered\", \"opened\", \"clicked\", \"responded\", \"converted\"]}, \"x\": {\"field\": \"bar_left\", \"type\": \"quantitative\", \"axis\": null, \"title\": null}, \"x2\": {\"field\": \"bar_right\"}, \"color\": {\"field\": \"stage\", \"type\": \"nominal\", \"legend\": null, \"scale\": {\"domain\": [\"delivered\", \"opened\", \"clicked\", \"responded\", \"converted\"], \"range\": [\"#1F3A5F\", \"#24507A\", \"#2D6A96\", \"#3C84B0\", \"#D7263D\"]}}, \"tooltip\": [{\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": \"Campaign\"}, {\"field\": \"stage\", \"type\": \"nominal\", \"title\": \"Stage\"}, {\"field\": \"count\", \"type\": \"quantitative\", \"title\": \"Target households\", \"format\": \",\"}]}, \"layer\": [{\"mark\": {\"type\": \"bar\"}}, {\"mark\": {\"type\": \"text\", \"color\": \"#FFFFFF\", \"fontWeight\": \"bold\"}, \"encoding\": {\"x\": {\"datum\": 0}, \"text\": {\"field\": \"count\", \"type\": \"quantitative\", \"format\": \",\"}}}]}}"
+    },
+    "frame": {
+     "title": "2. Target funnel by campaign",
+     "showTitle": true
+    },
+    "encodings": {
+     "fields": [
+      {
+       "fieldName": "campaign_name"
+      },
+      {
+       "fieldName": "delivered"
+      },
+      {
+       "fieldName": "opened"
+      },
+      {
+       "fieldName": "clicked"
+      },
+      {
+       "fieldName": "responded"
+      },
+      {
+       "fieldName": "converted"
+      }
+     ]
+    },
+    "data": {
+     "queryName": "main_query"
+    }
+   }
+  },
+  "position": {
+   "x": 0,
+   "y": 6,
+   "width": 6,
+   "height": 10
+  }
+ },
+ {
+  "widget": {
+   "name": "w_cv_waterfall",
+   "queries": [
+    {
+     "name": "main_query",
+     "query": {
+      "datasetName": "ds_waterfall",
+      "fields": [
+       {
+        "name": "campaign_name",
+        "expression": "`campaign_name`"
+       },
+       {
+        "name": "incremental_value",
+        "expression": "`incremental_value`"
+       },
+       {
+        "name": "cost",
+        "expression": "`cost`"
+       },
+       {
+        "name": "net_value",
+        "expression": "`net_value`"
+       },
+       {
+        "name": "bar_type",
+        "expression": "`bar_type`"
+       },
+       {
+        "name": "step_order",
+        "expression": "`step_order`"
+       }
+      ],
+      "disaggregated": true
+     }
+    }
+   ],
+   "spec": {
+    "version": 1,
+    "widgetType": "custom-vega-viz",
+    "jsonSpec": {
+     "type": "vega-lite",
+     "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"transform\": [{\"window\": [{\"op\": \"sum\", \"field\": \"net_value\", \"as\": \"running_total\"}], \"sort\": [{\"field\": \"step_order\", \"order\": \"ascending\"}]}, {\"calculate\": \"datum.bar_type == 'total' ? 0 : datum.running_total - datum.net_value\", \"as\": \"bar_start\"}, {\"calculate\": \"datum.bar_type == 'total' ? datum.net_value : datum.running_total\", \"as\": \"bar_end\"}, {\"calculate\": \"datum.bar_type == 'total' ? 'Total' : (datum.net_value < 0 ? 'Negative' : 'Positive')\", \"as\": \"direction\"}], \"encoding\": {\"x\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"sort\": {\"field\": \"step_order\", \"op\": \"min\", \"order\": \"ascending\"}, \"axis\": {\"labelAngle\": 0, \"labelLimit\": 180}}, \"y\": {\"field\": \"bar_start\", \"type\": \"quantitative\", \"title\": \"Net value (USD)\", \"axis\": {\"format\": \"$,.0f\"}}}, \"layer\": [{\"mark\": {\"type\": \"rule\", \"color\": \"#6B7280\"}, \"encoding\": {\"y\": {\"datum\": 0}}}, {\"mark\": {\"type\": \"bar\", \"size\": 48}, \"encoding\": {\"y\": {\"field\": \"bar_start\", \"type\": \"quantitative\"}, \"y2\": {\"field\": \"bar_end\"}, \"color\": {\"field\": \"direction\", \"type\": \"nominal\", \"legend\": {\"title\": null}, \"scale\": {\"domain\": [\"Positive\", \"Negative\", \"Total\"], \"range\": [\"#2E7D32\", \"#D7263D\", \"#1F3A5F\"]}}, \"tooltip\": [{\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": \"Campaign\"}, {\"field\": \"incremental_value\", \"type\": \"quantitative\", \"title\": \"Incremental value\", \"format\": \"$,.0f\"}, {\"field\": \"cost\", \"type\": \"quantitative\", \"title\": \"Cost\", \"format\": \"$,.0f\"}, {\"field\": \"net_value\", \"type\": \"quantitative\", \"title\": \"Net\", \"format\": \"$,.0f\"}]}}, {\"mark\": {\"type\": \"text\", \"dy\": -10, \"fontWeight\": \"bold\"}, \"encoding\": {\"y\": {\"field\": \"bar_end\", \"type\": \"quantitative\"}, \"text\": {\"field\": \"net_value\", \"type\": \"quantitative\", \"format\": \"$,.0f\"}}}]}"
+    },
+    "frame": {
+     "title": "3. Waterfall: net by campaign",
+     "showTitle": true
+    },
+    "encodings": {
+     "fields": [
+      {
+       "fieldName": "campaign_name"
+      },
+      {
+       "fieldName": "incremental_value"
+      },
+      {
+       "fieldName": "cost"
+      },
+      {
+       "fieldName": "net_value"
+      },
+      {
+       "fieldName": "bar_type"
+      },
+      {
+       "fieldName": "step_order"
+      }
+     ]
+    },
+    "data": {
+     "queryName": "main_query"
+    }
+   }
+  },
+  "position": {
+   "x": 0,
+   "y": 16,
+   "width": 6,
+   "height": 7
+  }
+ },
+ {
+  "widget": {
+   "name": "w_cv_dumbbell",
+   "queries": [
+    {
+     "name": "main_query",
+     "query": {
+      "datasetName": "ds_dumbbell",
+      "fields": [
+       {
+        "name": "segment",
+        "expression": "`segment`"
+       },
+       {
+        "name": "target_cvr",
+        "expression": "`target_cvr`"
+       },
+       {
+        "name": "holdout_cvr",
+        "expression": "`holdout_cvr`"
+       },
+       {
+        "name": "lift",
+        "expression": "`lift`"
+       },
+       {
+        "name": "target_households",
+        "expression": "`target_households`"
+       },
+       {
+        "name": "holdout_households",
+        "expression": "`holdout_households`"
+       }
+      ],
+      "disaggregated": true
+     }
+    }
+   ],
+   "spec": {
+    "version": 1,
+    "widgetType": "custom-vega-viz",
+    "jsonSpec": {
+     "type": "vega-lite",
+     "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"transform\": [{\"calculate\": \"datum.lift > 0 ? 'Positive lift' : 'No or negative lift'\", \"as\": \"lift_direction\"}], \"encoding\": {\"y\": {\"field\": \"segment\", \"type\": \"nominal\", \"title\": null, \"sort\": {\"field\": \"lift\", \"order\": \"descending\"}}}, \"layer\": [{\"mark\": {\"type\": \"rule\", \"strokeWidth\": 3}, \"encoding\": {\"x\": {\"field\": \"holdout_cvr\", \"type\": \"quantitative\", \"title\": \"Conversion rate (grey = holdout, dot = target)\", \"axis\": {\"format\": \".1%\"}}, \"x2\": {\"field\": \"target_cvr\"}, \"color\": {\"field\": \"lift_direction\", \"type\": \"nominal\", \"title\": \"Lift\", \"scale\": {\"domain\": [\"Positive lift\", \"No or negative lift\"], \"range\": [\"#2E7D32\", \"#D7263D\"]}}}}, {\"transform\": [{\"fold\": [\"target_cvr\", \"holdout_cvr\"], \"as\": [\"series_key\", \"cvr\"]}, {\"calculate\": \"datum.series_key == 'target_cvr' ? 'Target' : 'Holdout'\", \"as\": \"series\"}], \"mark\": {\"type\": \"point\", \"filled\": true, \"size\": 160, \"opacity\": 1}, \"encoding\": {\"x\": {\"field\": \"cvr\", \"type\": \"quantitative\"}, \"color\": {\"condition\": {\"test\": \"datum.series == 'Holdout'\", \"value\": \"#9AA0A6\"}, \"field\": \"lift_direction\", \"type\": \"nominal\", \"legend\": null, \"scale\": {\"domain\": [\"Positive lift\", \"No or negative lift\"], \"range\": [\"#2E7D32\", \"#D7263D\"]}}, \"tooltip\": [{\"field\": \"segment\", \"type\": \"nominal\", \"title\": \"Segment\"}, {\"field\": \"series\", \"type\": \"nominal\", \"title\": \"Group\"}, {\"field\": \"cvr\", \"type\": \"quantitative\", \"title\": \"CVR\", \"format\": \".2%\"}, {\"field\": \"lift\", \"type\": \"quantitative\", \"title\": \"Lift (pts)\", \"format\": \".2%\"}, {\"field\": \"target_households\", \"type\": \"quantitative\", \"title\": \"Target households\", \"format\": \",\"}, {\"field\": \"holdout_households\", \"type\": \"quantitative\", \"title\": \"Holdout households\", \"format\": \",\"}]}}]}"
+    },
+    "frame": {
+     "title": "4. Dumbbell: CVR by segment",
+     "showTitle": true
+    },
+    "encodings": {
+     "fields": [
+      {
+       "fieldName": "segment"
+      },
+      {
+       "fieldName": "target_cvr"
+      },
+      {
+       "fieldName": "holdout_cvr"
+      },
+      {
+       "fieldName": "lift"
+      },
+      {
+       "fieldName": "target_households"
+      },
+      {
+       "fieldName": "holdout_households"
+      }
+     ]
+    },
+    "data": {
+     "queryName": "main_query"
+    }
+   }
+  },
+  "position": {
+   "x": 0,
+   "y": 23,
+   "width": 6,
+   "height": 6
+  }
+ },
+ {
+  "widget": {
+   "name": "w_cv_crossfilter",
+   "queries": [
+    {
+     "name": "main_query",
+     "query": {
+      "datasetName": "ds_crossfilter",
+      "fields": [
+       {
+        "name": "campaign_name",
+        "expression": "`campaign_name`"
+       },
+       {
+        "name": "incremental_value",
+        "expression": "`incremental_value`"
+       },
+       {
+        "name": "cost",
+        "expression": "`cost`"
+       }
+      ],
+      "disaggregated": true
+     }
+    }
+   ],
+   "spec": {
+    "version": 1,
+    "widgetType": "custom-vega-viz",
+    "jsonSpec": {
+     "type": "vega-lite",
+     "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"params\": [{\"name\": \"databricks_mark_selection\", \"select\": {\"type\": \"point\", \"fields\": [\"campaign_name\"]}}], \"mark\": {\"type\": \"bar\", \"stroke\": null}, \"encoding\": {\"x\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"axis\": {\"labelAngle\": 0, \"labelLimit\": 180}}, \"y\": {\"field\": \"incremental_value\", \"type\": \"quantitative\", \"title\": \"Incremental value (USD)\", \"axis\": {\"format\": \"$,.0f\"}}, \"color\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"legend\": null}, \"fillOpacity\": {\"condition\": {\"param\": \"databricks_mark_selection\", \"value\": 1}, \"value\": 0.3}, \"stroke\": {\"condition\": {\"param\": \"databricks_mark_selection\", \"empty\": false, \"value\": {\"expr\": \"colors.markHighlightColor\"}}, \"value\": null}, \"strokeWidth\": {\"condition\": {\"param\": \"databricks_mark_selection\", \"empty\": false, \"value\": 2}, \"value\": 0}, \"tooltip\": [{\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": \"Campaign\"}, {\"field\": \"incremental_value\", \"type\": \"quantitative\", \"title\": \"Incremental value\", \"format\": \"$,.0f\"}, {\"field\": \"cost\", \"type\": \"quantitative\", \"title\": \"Cost\", \"format\": \"$,.0f\"}]}}"
+    },
+    "frame": {
+     "title": "5. Click a bar to cross-filter (databricks_mark_selection)",
+     "showTitle": true
+    },
+    "encodings": {
+     "fields": [
+      {
+       "fieldName": "campaign_name"
+      },
+      {
+       "fieldName": "incremental_value"
+      },
+      {
+       "fieldName": "cost"
+      }
+     ]
+    },
+    "data": {
+     "queryName": "main_query"
+    }
+   }
+  },
+  "position": {
+   "x": 0,
+   "y": 29,
+   "width": 6,
+   "height": 6
+  }
+ },
+ {
+  "widget": {
+   "name": "w_cv_cost_check",
+   "queries": [
+    {
+     "name": "main_query",
+     "query": {
+      "datasetName": "ds_crossfilter",
+      "fields": [
+       {
+        "name": "campaign_name",
+        "expression": "`campaign_name`"
+       },
+       {
+        "name": "cost",
+        "expression": "`cost`"
+       }
+      ],
+      "disaggregated": true
+     }
+    }
+   ],
+   "spec": {
+    "version": 1,
+    "widgetType": "custom-vega-viz",
+    "jsonSpec": {
+     "type": "vega-lite",
+     "spec": "{\"$schema\": \"https://vega.github.io/schema/vega-lite/v6.json\", \"width\": \"container\", \"height\": \"container\", \"config\": {\"autosize\": {\"type\": \"fit\", \"contains\": \"padding\"}, \"view\": {\"stroke\": null}}, \"data\": {\"name\": \"databricks_query\"}, \"mark\": {\"type\": \"bar\", \"color\": \"#1F3A5F\"}, \"encoding\": {\"x\": {\"field\": \"campaign_name\", \"type\": \"nominal\", \"title\": null, \"axis\": {\"labelAngle\": 0}}, \"y\": {\"field\": \"cost\", \"type\": \"quantitative\", \"title\": \"Cost (USD)\", \"axis\": {\"format\": \"$,.0f\"}}}}"
+    },
+    "frame": {
+     "title": "Cross-filter check: cost by campaign (same dataset)",
+     "showTitle": true
+    },
+    "encodings": {
+     "fields": [
+      {
+       "fieldName": "campaign_name"
+      },
+      {
+       "fieldName": "cost"
+      }
+     ]
+    },
+    "data": {
+     "queryName": "main_query"
+    }
+   }
+  },
+  "position": {
+   "x": 0,
+   "y": 35,
+   "width": 6,
+   "height": 6
+  }
+ }
+]
