@@ -9,6 +9,7 @@ You'll learn to:
 - define metrics once (custom calculations, metric views, relationships)
 - add filters, parameters, cross-filtering and multiple pages
 - go beyond the built-in charts with **Vega-Lite** custom visualizations
+- let Genie Code find new insights in the remaining data with one open-ended prompt
 - migrate a **Tableau** workbook into an AI/BI dashboard
 - publish, share and schedule a dashboard, with a Genie Agent for follow-up questions
 
@@ -49,16 +50,17 @@ that wasn't contacted). The gap between them is the **lift** the campaign caused
 
 | # | Module | Time | Type |
 |---|---|---|---|
-| 0 | Create the gold tables from the CSVs | 8 min | hands-on |
+| 0 | Create the gold tables from the CSVs | 6 min | hands-on |
 | 1 | Zero to dashboard in one prompt | 12 min | hands-on |
 | 2 | Data modeling: define metrics once | 15 min | hands-on |
 | 3 | Interactivity: filters, parameters, cross-filtering, pages | 13 min | hands-on |
-| 4 | Vega-Lite custom visualizations | 15 min | hands-on |
-| 5 | Migrating a Tableau dashboard | 12 min | hands-on |
-| 6 | Publish and share | 10 min | demo |
-| 7 | Wrap-up + dashboards as code (take-home) | 5 min | lightning |
+| 4 | Vega-Lite custom visualizations | 12 min | hands-on |
+| 5 | One last page: where to invest next | 5 min | hands-on |
+| 6 | Migrating a Tableau dashboard | 12 min | hands-on |
+| 7 | Publish and share | 10 min | demo |
+| 8 | Wrap-up + dashboards as code (take-home) | 5 min | lightning |
 
-### 0 · Create the gold tables from the CSVs (8 min)
+### 0 · Create the gold tables from the CSVs (6 min)
 **New → Add or upload data → Create or modify a table.** Drop in each CSV (one table per file),
 pick your catalog and schema, keep the suggested table names, and click **Create table**.
 Do `campaign_results_detail.csv` first, since every module uses it.
@@ -69,9 +71,9 @@ Do `campaign_results_detail.csv` first, since every module uses it.
 
 ✅ Check: `SELECT COUNT(*) FROM campaign_results_detail` returns **4,381**.
 
-### 1–6 · Build
+### 1–7 · Build
 Follow [`genie_code_prompts.md`](genie_code_prompts.md) module by module. Each module has
-prompts to paste, numbers to check, talking points and a "your turn" challenge. Module 6
+prompts to paste, numbers to check, talking points and a "your turn" challenge. Module 7
 (publish and share) is done by hand in the dashboard settings and publish dialog.
 
 Headline numbers to sanity-check along the way (Target audience):
@@ -85,7 +87,7 @@ Headline numbers to sanity-check along the way (Target audience):
 The story: Direct Mail and Email earned their keep; Digital retargeting drove **no** incremental
 conversions, so that budget should be reallocated.
 
-### 7 · Wrap-up: dashboards as code (take-home)
+### 8 · Wrap-up: dashboards as code (take-home)
 Every dashboard is a JSON file (`.lvdash.json`). You can export it, keep it in Git, and deploy it
 to other workspaces with Declarative Automation Bundles. Try it with `answer_key/`:
 **Dashboards → Create → Import dashboard from file**, then point it at your catalog and schema.

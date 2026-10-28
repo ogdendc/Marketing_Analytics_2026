@@ -191,7 +191,29 @@ Make the bullet chart cross-filter this dashboard page when I click a campaign.
 
 ---
 
-## Module 5 · Migrating a Tableau dashboard
+## Module 5 · One last page: where to invest next
+
+Let Genie Code find more insight in the data the dashboard hasn't used yet. The prompt gives
+general guidance and leaves the choice of visuals to Genie Code.
+
+```
+Add a new page called "Where to Invest Next" that uses data in
+your_catalog.your_schema we haven't used yet: the
+campaign_lift_roi table, and the household attributes in households we haven't charted
+(for example product_count, acquisition_channel, email_opt_in, client_count).
+Explore the data first, then choose 4 to 6 visuals that help answer: which campaign and
+segment combinations produced the most incremental value and ROI, and which household
+traits are associated with higher Target conversion rates. Use incremental_value and roi from campaign_lift_roi rather than recomputing them, keep any conversion rates Target-only, add a one-line description under each chart explaining the insight, and end the page with a short text box summarizing the top 3 recommendations for next quarter's campaigns.
+```
+
+**Talking points:** results vary from run to run, which is the point: Genie Code explores and
+proposes. Read its recommendations critically. `roi` in `campaign_lift_roi` is a multiple
+(e.g. 4,881 means 4,881x), and the Ultra HNW and High Net Worth segments have very small
+holdout groups, so their ROI is directional, not precise.
+
+---
+
+## Module 6 · Migrating a Tableau dashboard
 
 Put [`tableau/campaign_performance.twb`](tableau/) in a Unity Catalog volume folder (or upload it
 in the Genie Code chat), and keep `campaign_performance.png` on your laptop for the refinement step.
@@ -229,7 +251,7 @@ incremental value at about −$3.5K. Both are right; they answer different quest
 
 ---
 
-## Module 6 · Publish and share
+## Module 7 · Publish and share
 
 These are settings and publish-time choices, done by hand:
 1. In the dashboard settings, enable the **Genie Agent** (Ask Genie) so viewers can ask follow-up
